@@ -1,13 +1,15 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 import io
 
-class PalmClassifier(nn.Module):
+class PalmDiseaseClassifier(nn.Module):
     def __init__(self, number_of_classes=9):
-        super(PalmClassifier, self).__init__()
+        super(PalmDiseaseClassifier, self).__init__()
         
         self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1, stride=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1, stride=1)
@@ -19,11 +21,8 @@ class PalmClassifier(nn.Module):
         
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        
-        self.fc1 = nn.Linear(128, number_of_classes)
-        
         self.drop1 = nn.Dropout(0.2)
+        self.fc1 = nn.Linear(128*28*28, number_of_classes)
     
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
@@ -32,9 +31,10 @@ class PalmClassifier(nn.Module):
         x = self.pool(x)
         x = F.relu(self.bn3(self.conv3(x)))
         x = self.pool(x)
-        x = self.gap(x)
+        # print(x.shape) # to get the needed input size for fc1
         
         x = x.view(x.size(0), -1)
+        # print(x.shape)
         x = self.drop1(x)
         x = self.fc1(x)
         
@@ -43,34 +43,54 @@ class PalmClassifier(nn.Module):
 
 app = Flask(__name__)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = CNNModel(num_classes=9)
-model.load_state_dict(torch.load("C:\\Users\\ahmad\\Desktop\\ai\\date_palm_leaf_model.pth", map_location=device))
+CORS(app)
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+model = PalmDiseaseClassifier(number_of_classes=9)
+model.load_state_dict(torch.load("best_palmdisease_cnn.pth"))
+model.to(device)
 model.eval()
 
 transform = transforms.Compose([
-    transforms.Resize((300, 300)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
 ])
 
-class_labels = ['Black Scorch', 'Fusarium Wilt', 'Healthy sample', 'Leaf Spots', 'Magnesium Deficiency', 'Manganese Deficiency', 'Parlatoria Blanchardi', 'Potassium Deficiency', 'Rachis Blight']
+class_labels = ['Black Scorch', 'Fusarium Wilt', 'Healthy sample', 'Leaf Spots', 'Magnesium Deficiency',
+                'Manganese Deficiency', 'Parlatoria Blanchardi', 'Potassium Deficiency', 'Rachis Blight']
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
 
-    file = request.files['file']
-    image = Image.open(io.BytesIO(file.read())).convert('RGB')
-    image = transform(image).unsqueeze(0)
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'Empty filename'}), 400
 
-    with torch.no_grad():
-        output = model(image)
-        _, predicted = torch.max(output, 1)
-        predicted_class = class_labels[predicted.item()]
+        # Read and process image
+        image_bytes = file.read()
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        image = transform(image)
+        
+        # Make prediction
+        with torch.no_grad():
+            image = image.to(device)
+            image = image.unsqueeze(0)
+            output = model(image)
+            _, predicted = torch.max(output, 1)
+            predicted_class = class_labels[predicted.item()]
+            print(f"Prediction: {predicted_class}")
 
-    return jsonify({'prediction': predicted_class})
+        return jsonify({
+            'prediction': predicted_class,
+            'status': 'success'
+        })
+
+    except Exception as e:
+        print(f"Error processing request: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='192.168.100.13', port=5000)
