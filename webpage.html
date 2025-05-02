@@ -89,10 +89,8 @@
         const predictionText = document.getElementById('predictionText');
         const spinner = document.getElementById('spinner');
 
-        // Update this to your Flask server IP
         const API_URL = 'http://192.168.100.13:5000/predict';
 
-        // Show image preview when file is selected
         imageInput.addEventListener('change', function() {
             const file = imageInput.files[0];
             if (file) {
@@ -110,12 +108,10 @@
             }
         });
 
-        // Handle upload button click
         uploadButton.addEventListener('click', async function() {
             const file = imageInput.files[0];
             if (!file) return;
 
-            // Show loading spinner
             spinner.style.display = 'block';
             uploadButton.disabled = true;
 
@@ -138,7 +134,6 @@
                     throw new Error(data.error);
                 }
 
-                // Display results
                 predictionText.textContent = data.prediction;
                 predictionText.style.color = '#27ae60';
                 resultDiv.style.display = 'block';

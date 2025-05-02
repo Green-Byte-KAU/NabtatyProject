@@ -69,12 +69,10 @@ def predict():
         if file.filename == '':
             return jsonify({'error': 'Empty filename'}), 400
 
-        # Read and process image
         image_bytes = file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
         image = transform(image)
         
-        # Make prediction
         with torch.no_grad():
             image = image.to(device)
             image = image.unsqueeze(0)
