@@ -78,11 +78,15 @@ def predict():
             image = image.unsqueeze(0)
             output = model(image)
             _, predicted = torch.max(output, 1)
+            confidence,_ = torch.max(F.softmax(output,1),1)
+            
             predicted_class = class_labels[predicted.item()]
             print(f"Prediction: {predicted_class}")
+            print(f"confidence = %{round(confidence.item()*100,1)}")
 
         return jsonify({
             'prediction': predicted_class,
+            'confidence': '%'+str(round(confidence.item()*100,1)),
             'status': 'success'
         })
 

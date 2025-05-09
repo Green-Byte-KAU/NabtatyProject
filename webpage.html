@@ -79,6 +79,8 @@
     <div id="result">
         <h2>Classification Result:</h2>
         <p id="predictionText"></p>
+        <h2>Confidence:</h2>
+        <p id="confidence"></p>
     </div>
 
     <script>
@@ -87,6 +89,7 @@
         const preview = document.getElementById('preview');
         const resultDiv = document.getElementById('result');
         const predictionText = document.getElementById('predictionText');
+        const conf = document.getElementById('confidence');
         const spinner = document.getElementById('spinner');
 
         const API_URL = 'http://127.0.0.1:5000/predict';
@@ -135,8 +138,11 @@
                 }
 
                 predictionText.textContent = data.prediction;
-                predictionText.style.color = '#27ae60';
+                conf.textContent =data.confidence;
+                predictionText.style.color = '#000000';
                 resultDiv.style.display = 'block';
+                conf.style.color = '#27ae60';
+                conf.style.display = 'block';
                 
             } catch (error) {
                 predictionText.textContent = `Error: ${error.message}`;
