@@ -47,7 +47,7 @@ CORS(app)
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 model = PalmDiseaseClassifier(number_of_classes=9)
-model.load_state_dict(torch.load("best_palmdisease_cnn.pth"))
+model.load_state_dict(torch.load("best_palmdisease_cnn.pth", weights_only=True))
 model.to(device)
 model.eval()
 
